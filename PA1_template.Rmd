@@ -1,25 +1,77 @@
----
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
----
+Reproducible Research: Peer Assessment 1
+===================================================
 
 
 ## Loading and preprocessing the data
-
-
+```{r echo=TRUE}
+actdata <- read.csv("activity.csv", na.strings = "NA", colClasses = c("numeric","Date","numeric"))
+```
+* Add up steps by date
+```{r echo=TRUE}
+totalSteps<-aggregate(steps~date,data=actdata,sum,na.rm=TRUE)
+```
 
 ## What is mean total number of steps taken per day?
-
-
-
+* Histogram of the total number of steps taken each day
+```{r echo=TRUE}
+hist(totalSteps$steps)
+```
+* Mean and median number of steps taken each day
+```{r echo=TRUE}
+mean(totalSteps$steps)
+median(totalSteps$steps)
+```
 ## What is the average daily activity pattern?
-
-
-
+* Interval is identifier for the 5-minute interval in which measurement was taken
+* mean of steps taken by interval
+```{r echo=TRUE}
+stepsInterval<-aggregate(steps~interval,data=actdata,mean,na.rm=TRUE)
+```
+* Time series plot of the average number of steps taken
+```{r echo=TRUE}
+plot(steps~interval,data=stepsInterval,type="l")
+```
+* The 5-minute interval that, on average, contains the maximum number of steps
+```{r echo=TRUE}
+stepsInterval[which.max(stepsInterval$steps),]$interval
+```
 ## Imputing missing values
 
+* My strategy is to fill the missing data using the mean for that 5-minute interval. The function interval2steps will generate the mean needed
+```{r echo=TRUE}
+interval2steps<-function(interval){
+    stepsInterval[stepsInterval$interval==interval,]$steps
+}
+```
+* create a copy of the actdata
 
+```{r echo=TRUE}
+actFilled<-actdata 
+count=0 
+for(i in 1:nrow(actFilled)){
+    if(is.na(actFilled[i,]$steps)){
+        actFilled[i,]$steps<-interval2steps(actFilled[i,]$interval)
+        count=count+1
+    }
+}
+cat("In total",count, "missing values were filled.\n\r") 
+```
+* Histogram of the total number of steps taken each day after missing values are imputed
+```{r echo=TRUE}
+totalSteps2<-aggregate(steps~date,data=actFilled,sum)
+hist(totalSteps2$steps)
+```
+## Are there differences in actdata patterns between weekdays and weekends?
 
-## Are there differences in activity patterns between weekdays and weekends?
+* differentiate weekdays with weekends
+```{r echo=TRUE}
+actFilled$day=ifelse(as.POSIXlt(actFilled$date)$wday%%6==0, "weekend","weekday")
+
+actFilled$day=factor(actFilled$day,levels=c("weekday","weekend"))
+```
+* Panel plot comparing the average number of steps taken per 5-minute interval across weekdays and weekends
+```{r echo=TRUE}
+stepsInterval2=aggregate(steps~interval+day,actFilled,mean)
+library(lattice)
+xyplot(steps~interval|factor(day),data=stepsInterval2,aspect=1/2,type="l")
+```
